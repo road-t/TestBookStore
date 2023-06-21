@@ -2,24 +2,19 @@
 
 require_once ('Entity.php');
 require_once('Author.php');
-require_once("utils.php");
 
 class Book extends Entity
 {
     static string $table = 'books';
 
-    public function __construct(
-        private ?int $id,
-        private string $title,
-        private float $price,
-        private Author $author,
-        private bool $isDirty = false) {}
-
-    public function getId() { return $this->id; }
+    protected string $title;
+    protected float $price;
+    protected int $author_id;
 
     public function getTitle() : string { return $this->title; }
     public function getPrice() : float { return $this->price; }
-    public function getAuthor() : Author { return $this->author; }
+    public function getAuthorId() : int { return $this->author_id; }
+    public function getAuthor() : Author { return Author::show($this->author_id); }
 
     public function setTitle(string $title) : bool
     {
@@ -34,25 +29,14 @@ class Book extends Entity
         return false;
     }
 
-    static public function load(int $id) : ?Book
+    static public function list(int $limit = null) : array
     {
-        return null;
-    }
+        $query = 'SELECT b.id, title, price, name author FROM '. Book::$table . ' b LEFT JOIN '. Author::$table .' a on a.id = author_id;';
 
-    public function save() : bool
-    {
-        if (!$this->isDirty) {
-            return false;
+        if ($limit !== null) {
+            $query .= ' LIMIT ' . $limit;
         }
 
-        // save here
-
-        return true;
-    }
-
-    public function delete() : bool
-    {
-        // delete or die
-        return true;
+        return DB::selectCustom($query);
     }
 }

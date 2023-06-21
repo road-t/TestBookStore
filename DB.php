@@ -1,49 +1,76 @@
 <?php
 
+require_once 'config.php';
 require_once 'Entity.php';
 
 class DB
 {
-    public function __construct(
-        public readonly string $host,
-        public readonly int $port,
-        public readonly string $user,
-        public readonly string $password,
-        public readonly string $dbname,
-        private mysqli $db,
-    )
+    static private mysqli $db;
+
+    static string $host = DB_HOST;
+    static string $port = DB_PORT;
+    static string $dbName = DB_NAME;
+    static string $user = DB_USER;
+    static string $password = DB_PASS;
+
+    public static function connect()
     {
-        $db = mysqli_connect($this->host, $this->user, $this->password, $this->dbname, $this->port);
+        self::$db = mysqli_connect(self::$host, self::$user, self::$password, self::$dbName, self::$port);
     }
 
-    public function selectOneById(int $id, string $table)
+    public static function selectOne(Entity $entity, $id) : ?Entity
     {
+        $query = 'SELECT * FROM '. $entity::$table .' WHERE `id` = ' . $id;
 
+        $result = self::query($query);
+
+        return $result->fetch_object($entity::class);
     }
 
-    public function selectAll(Entity $object, $limit = null)
+    public static function selectAll(Entity $entity, $limit = null) : array
     {
-        $query = 'SELECT * FROM '. $object::$table .' ORDER BY id DESC';
+        $query = 'SELECT * FROM '. $entity::$table .' ORDER BY `id` DESC';
 
         if ($limit !== null) {
             $query .= ' LIMIT ' . $limit;
         }
 
-        $result = $this->db->query($query);
+        $result = self::query($query);
 
-        while ($row = $result->fetch_object(Entity::class)) {
-            var_dump($row);
+        $list = [];
+
+        while ($row = $result->fetch_object($entity::class)) {
+            $list[] = $row;
         }
+
+        return $list;
     }
 
-    public function insert(Entity $object)
+    public static function selectCustom($query) : array
     {
-        $fields = get_object_vars($object);
+        $result = self::query($query);
+
+        $list = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $list[] = $row;
+        }
+
+        return $list;
+    }
+
+    public static function insert(Entity $object)
+    {
+        $fields = $object->serialize();
 
         $columns = '';
         $values = '';
 
         foreach ($fields as $field => $value) {
+            if ($field == 'id' || $field == 'deleted' || $field == 'isDirty') {
+                continue;
+            }
+
             $columns .= $field .', ';
             $values .= "'$value', ";
         }
@@ -52,13 +79,42 @@ class DB
         $values = rtrim($values, ', ');
 
         $query = 'INSERT INTO '. $object::$table ." ($columns) VALUES ($values)";
-        $this->db->query($query);
+        self::query($query);
     }
 
-    public function deleteById(Entity $class, int $id)
+    public static function update(Entity $object, int $id)
     {
-        $query = 'UPDATE '. $class::$table .' SET deleted = true LIMIT 1';
+        $fields = $object->serialize();
 
-        $this->db->query($query);
+        $values = '';
+
+        foreach ($fields as $field => $value) {
+            if ($field == 'id' || $field == 'deleted' || $field == 'isDirty') {
+                continue;
+            }
+
+            $values .= "`$field` = '$value', ";
+        }
+
+        $values = rtrim($values, ', ');
+
+        $query = 'UPDATE '. $object::$table ." SET $values WHERE id = $id LIMIT 1";
+        self::query($query);
+    }
+
+    public static function delete(Entity $object)
+    {
+        $query = 'UPDATE '. $object::$table ." SET deleted = true WHERE id = '" . $object->getId() . "' LIMIT 1";
+
+        self::query($query);
+    }
+
+    private static function query(string $query)
+    {
+        if (!isset(self::$db)) {
+            DB::connect();
+        }
+
+        return self::$db->query($query);
     }
 }

@@ -5,14 +5,10 @@ require_once "helpers.php";
 
 class Author extends Entity
 {
-    static string $table = 'author';
+    static string $table = 'authors';
 
-    public function __construct(
-        private ?int $id,
-        private string $name,
-        private bool $isDirty = false) {}
+    protected string $name;
 
-    public function getId() : int { return $this->id; }
     public function getName() : string { return $this->name; }
 
     public function setName(string $name) : bool
@@ -26,27 +22,5 @@ class Author extends Entity
         }
 
         return false;
-    }
-
-    static public function load(int $id) : ?Author
-    {
-        return null;
-    }
-
-    public function save() : bool
-    {
-        if (!$this->isDirty) {
-            return false;
-        }
-
-        // save here
-
-        return true;
-    }
-
-    public function delete() : bool
-    {
-        // delete or die
-        return true;
     }
 }
