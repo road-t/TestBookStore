@@ -1,7 +1,7 @@
 <?php
 
-require_once "Book.php";
-require_once "Author.php";
+require_once "Model/Book.php";
+require_once "Model/Author.php";
 
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];
@@ -59,15 +59,18 @@ switch ($method)
     case 'PUT':
         $entity = $entityClass::show($request['id']);
         $entity->updateFromArray($request);
+        $entity->save();
         break;
 
     case 'DELETE':
         $entity = $entity::show($request['id']);
         $entity->delete();
+
+        http_response_code(204);
         break;
 
     default:
-        // I'm a teapot
+        http_response_code(418);
 }
 
 echo json_encode($jsonResult);

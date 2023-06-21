@@ -1,7 +1,7 @@
 <?php
 
 require_once 'config.php';
-require_once 'Entity.php';
+require_once 'Model/Entity.php';
 
 class DB
 {
@@ -20,7 +20,7 @@ class DB
 
     public static function selectOne(Entity $entity, $id) : ?Entity
     {
-        $query = 'SELECT * FROM '. $entity::$table .' WHERE `id` = ' . $id;
+        $query = "SELECT * FROM {$entity::$table} WHERE `id` = '$id' AND `deleted` IS NULL LIMIT 1;";
 
         $result = self::query($query);
 
@@ -29,7 +29,7 @@ class DB
 
     public static function selectAll(Entity $entity, $limit = null) : array
     {
-        $query = 'SELECT * FROM '. $entity::$table .' ORDER BY `id` DESC';
+        $query = "SELECT * FROM {$entity::$table} WHERE `deleted` IS NULL ORDER BY `id` DESC";
 
         if ($limit !== null) {
             $query .= ' LIMIT ' . $limit;
@@ -78,18 +78,19 @@ class DB
         $columns = rtrim($columns, ', ');
         $values = rtrim($values, ', ');
 
-        $query = 'INSERT INTO '. $object::$table ." ($columns) VALUES ($values)";
+        $query = "INSERT INTO {$object::$table} ($columns) VALUES ($values)";
+
         self::query($query);
     }
 
-    public static function update(Entity $object, int $id)
+    public static function update(Entity $object)
     {
         $fields = $object->serialize();
 
         $values = '';
 
         foreach ($fields as $field => $value) {
-            if ($field == 'id' || $field == 'deleted' || $field == 'isDirty') {
+            if ($field == 'id' || $field == 'isDirty' || $field == 'deleted') {
                 continue;
             }
 
@@ -98,15 +99,18 @@ class DB
 
         $values = rtrim($values, ', ');
 
-        $query = 'UPDATE '. $object::$table ." SET $values WHERE id = $id LIMIT 1";
+        $query = "UPDATE {$object::$table} SET $values WHERE id = {$object->getId()} LIMIT 1";
+
         self::query($query);
     }
 
-    public static function delete(Entity $object)
+    public static function delete(Entity $object) : bool
     {
-        $query = 'UPDATE '. $object::$table ." SET deleted = true WHERE id = '" . $object->getId() . "' LIMIT 1";
+        $query = "UPDATE {$object::$table} SET `deleted` = NOW() WHERE `id` = '{$object->getId()}' LIMIT 1";
 
         self::query($query);
+
+        return true;
     }
 
     private static function query(string $query)
